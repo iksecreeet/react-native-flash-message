@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Dimensions, Platform, StatusBar, StyleSheet } from "react-native";
+import { Dimensions, Platform, StyleSheet } from "react-native";
 import { isIphoneX, getStatusBarHeight } from "react-native-iphone-x-helper";
 import PropTypes from "prop-types";
 
@@ -35,12 +35,10 @@ const isIPad = (() => {
 
 const isOrientationLandscape = ({ width, height }) => width > height;
 
-/**
- * Helper function to get the current status bar height to plus in paddingTop message
- */
-export function getFlashMessageStatusBarHeight(isLandscape = false, _customStatusBarHeight = null) {
-  if (_customStatusBarHeight !== null && _customStatusBarHeight !== false) {
-    return typeof _customStatusBarHeight === "function" ? _customStatusBarHeight(isLandscape) : +_customStatusBarHeight;
+let _customStatusBarHeight = null;
+const statusBarHeight = (isLandscape = false) => {
+  if (_customStatusBarHeight !== null) {
+    return _customStatusBarHeight;
   }
 
   /**
@@ -50,11 +48,11 @@ export function getFlashMessageStatusBarHeight(isLandscape = false, _customStatu
    * we do.
    */
   if (isAndroid) {
-    if (!!global && !!global.Expo) {
-      return +StatusBar.currentHeight + 6;
+    if (global.Expo) {
+      return global.Expo.Constants.statusBarHeight + 6;
+    } else {
+      return 6;
     }
-
-    return 6;
   }
 
   if (isIPhoneX) {
@@ -66,10 +64,10 @@ export function getFlashMessageStatusBarHeight(isLandscape = false, _customStatu
   }
 
   return isLandscape ? 0 : 20;
-}
+};
 
 const doubleFromPercentString = percent => {
-  if (!percent || !percent.includes("%")) {
+  if (!percent.includes("%")) {
     return 0;
   }
 
@@ -183,6 +181,9 @@ export default class FlashMessageWrapper extends Component {
     position: PropTypes.string,
     children: PropTypes.func.isRequired,
   };
+  static setStatusBarHeight = height => {
+    _customStatusBarHeight = height;
+  };
   constructor() {
     super();
 
@@ -202,10 +203,10 @@ export default class FlashMessageWrapper extends Component {
     this.setState({ isLandscape });
   }
   render() {
-    const { position, statusBarHeight = null, children } = this.props;
+    const { position, children } = this.props;
     const { isLandscape } = this.state;
 
-    const _statusBarHeight = getFlashMessageStatusBarHeight(isLandscape, statusBarHeight);
+    const _statusBarHeight = statusBarHeight(isLandscape);
 
     /**
      * This wrapper will return data about extra inset padding, statusBarHeight and some device detection like iPhoneX and iPad
