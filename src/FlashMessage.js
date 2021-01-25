@@ -19,7 +19,7 @@ const OFFSET_HEIGHT = Platform.OS !== "ios" ? 60 : 48;
  * If you need to customize the bg color or text color for a single message you can use the `backgroundColor` and `color` attributes
  */
 const MessagePropType = PropTypes.shape({
-  message: PropTypes.string.isRequired,
+  message: PropTypes.string,
   description: PropTypes.string,
   type: PropTypes.string,
   backgroundColor: PropTypes.string,
@@ -167,90 +167,81 @@ export const renderFlashMessageIcon = (icon = "success", style = {}, customProps
  * This component it's wrapped in `FlashMessageWrapper` to handle orientation change and extra inset padding in special devices
  * For most of uses this component doesn't need to be change for custom versions, cause it's very customizable
  */
-export const DefaultFlash = React.forwardRef(
-  (
-    {
-      message,
-      style,
-      textStyle,
-      titleStyle,
-      titleProps,
-      textProps,
-      renderFlashMessageIcon,
-      position = "top",
-      statusBarHeight = null,
-      renderCustomContent,
-      floating = false,
-      icon,
-      hideStatusBar = false,
-      ...props
-    },
-    ref
-  ) => {
-    const hasDescription = !!message.description && message.description !== "";
-    const iconView =
-      !!icon &&
-      !!icon.icon &&
-      renderFlashMessageIcon(icon.icon === "auto" ? message.type : icon.icon, [
-        icon.position === "left" && styles.flashIconLeft,
-        icon.position === "right" && styles.flashIconRight,
-        icon.style,
-      ]);
-    const hasIcon = !!iconView;
+export const DefaultFlash = ({
+  message,
+  style,
+  textStyle,
+  titleStyle,
+  titleProps,
+  renderFlashMessageIcon,
+  position = "top",
+  renderCustomContent,
+  floating = false,
+  icon,
+  hideStatusBar = false,
+  ...props
+}) => {
+  const hasDescription = !!message.description && message.description !== "";
+  const iconView =
+    !!icon &&
+    !!icon.icon &&
+    renderFlashMessageIcon(icon.icon === "auto" ? message.type : icon.icon, [
+      icon.position === "left" && styles.flashIconLeft,
+      icon.position === "right" && styles.flashIconRight,
+      icon.style,
+    ]);
+  const hasIcon = !!iconView;
 
-    return (
-      <FlashMessageWrapper
-        ref={ref}
-        position={typeof position === "string" ? position : null}
-        statusBarHeight={statusBarHeight}>
-        {wrapperInset => (
-          <View
-            style={styleWithInset(
-              [
-                styles.defaultFlash,
-                position === "center" && styles.defaultFlashCenter,
-                position !== "center" && floating && styles.defaultFlashFloating,
-                hasIcon && styles.defaultFlashWithIcon,
-                !!message.backgroundColor
-                  ? { backgroundColor: message.backgroundColor }
-                  : !!message.type &&
-                    !!FlashMessage.ColorTheme[message.type] && {
-                      backgroundColor: FlashMessage.ColorTheme[message.type],
-                    },
-                style,
-              ],
-              wrapperInset,
-              !!hideStatusBar,
-              position !== "center" && floating ? "margin" : "padding"
-            )}
-            {...props}>
-            {hasIcon && icon.position === "left" && iconView}
-            <View style={styles.flashLabel}>
+  return (
+    <FlashMessageWrapper position={typeof position === "string" ? position : null}>
+      {wrapperInset => (
+        <View
+          style={styleWithInset(
+            [
+              styles.defaultFlash,
+              position === "center" && styles.defaultFlashCenter,
+              position !== "center" && floating && styles.defaultFlashFloating,
+              hasIcon && styles.defaultFlashWithIcon,
+              !!message.backgroundColor
+                ? { backgroundColor: message.backgroundColor }
+                : !!message.type &&
+                  !!FlashMessage.ColorTheme[message.type] && {
+                    backgroundColor: FlashMessage.ColorTheme[message.type],
+                  },
+              style,
+            ],
+            wrapperInset,
+            !!hideStatusBar,
+            position !== "center" && floating ? "margin" : "padding"
+          )}
+          {...props}>
+          {hasIcon && icon.position === "left" && iconView}
+          <View style={styles.flashLabel}>
+            {message && (
               <Text
-                style={[
-                  styles.flashText,
-                  hasDescription && styles.flashTitle,
-                  !!message.color && { color: message.color },
-                  titleStyle,
-                ]}
-                {...textProps}
-                {...titleProps}>
-                {message.message}
+              style={[
+                styles.flashText,
+                hasDescription && styles.flashTitle,
+                !!message.color && { color: message.color },
+                titleStyle,
+              ]}
+              {...titleProps}>
+              {message.message}
+            </Text>
+            )}
+            {!!renderCustomContent && renderCustomContent(message)}
+            {hasDescription && (
+              <Text style={[styles.flashText, !!message.color && { color: message.color }, textStyle]}>
+                {message.description}
               </Text>
-              {!!renderCustomContent && renderCustomContent(message)}
-              {hasDescription && (
-                <Text style={[styles.flashText, !!message.color && { color: message.color }, textStyle]} {...textProps}>
-                  {message.description}
-                </Text>
-              )}
-            </View>
-            {hasIcon && icon.position === "right" && iconView}
+            )}
           </View>
-        )}
-      </FlashMessageWrapper>
-    );
-  }
-);
+          {hasIcon && icon.position === "right" && iconView}
+        </View>
+      )}
+    </FlashMessageWrapper>
+  );
+};
 
 DefaultFlash.propTypes = {
   message: MessagePropType,
@@ -310,10 +301,6 @@ export default class FlashMessage extends Component {
      */
     hideStatusBar: false,
     /**
-     * Custom status bar height size prop to sum in message padding top
-     */
-    statusBarHeight: null,
-    /**
      * The `floating` prop unstick the message from the edges and applying some border radius to component
      */
     floating: false,
@@ -363,6 +350,7 @@ export default class FlashMessage extends Component {
     icon: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     renderFlashMessageIcon: PropTypes.func,
     transitionConfig: PropTypes.func,
+    MessageComponent: PropTypes.oneOfType([PropTypes.element, PropTypes.func]),
   };
   /**
    * Your can customize the default ColorTheme of this component
@@ -393,12 +381,12 @@ export default class FlashMessage extends Component {
     };
   }
   componentDidMount() {
-    if (this.props.canRegisterAsDefault !== false) {
+    if (this.props.canRegisterAsDefault) {
       FlashMessageManager.register(this);
     }
   }
   componentWillUnmount() {
-    if (this.props.canRegisterAsDefault !== false) {
+    if (this.props.canRegisterAsDefault) {
       FlashMessageManager.unregister(this);
     }
   }
@@ -565,19 +553,15 @@ export default class FlashMessage extends Component {
     this.toggleVisibility(false, animated);
   }
   render() {
+    const { renderFlashMessageIcon, renderCustomContent, MessageComponent } = this.props;
     const { message, visibleValue } = this.state;
 
-    const { MessageComponent, testID, accessible, accessibilityLabel, ...otherProps } = this.props;
-    const renderCustomContent = this.prop(message, "renderCustomContent");
-    const renderFlashMessageIcon = this.prop(message, "renderFlashMessageIcon");
     const style = this.prop(message, "style");
     const textStyle = this.prop(message, "textStyle");
     const titleStyle = this.prop(message, "titleStyle");
     const titleProps = this.prop(message, "titleProps");
-    const textProps = this.prop(message, "textProps");
     const floating = this.prop(message, "floating");
     const position = this.prop(message, "position");
-    const statusBarHeight = this.prop(message, "statusBarHeight");
     const icon = parseIcon(this.prop(message, "icon"));
     const hideStatusBar = this.prop(message, "hideStatusBar");
     const transitionConfig = this.prop(message, "transitionConfig");
@@ -592,7 +576,7 @@ export default class FlashMessage extends Component {
           animStyle,
         ]}>
         {!!message && (
-          <TouchableWithoutFeedback onPress={this.pressMessage} onLongPress={this.longPressMessage} accessible={false}>
+          <TouchableWithoutFeedback onPress={this.pressMessage} onLongPress={this.longPressMessage}>
             <MessageComponent
               position={position}
               floating={floating}
@@ -600,16 +584,11 @@ export default class FlashMessage extends Component {
               hideStatusBar={hideStatusBar}
               renderFlashMessageIcon={renderFlashMessageIcon}
               renderCustomContent={renderCustomContent}
-              statusBarHeight={statusBarHeight}
               icon={icon}
               style={style}
               textStyle={textStyle}
               titleStyle={titleStyle}
               titleProps={titleProps}
-              textProps={textProps}
-              accessible={!!accessible}
-              testID={testID}
-              accessibilityLabel={accessibilityLabel}
             />
           </TouchableWithoutFeedback>
         )}
@@ -667,7 +646,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   flashLabel: {
-    flex: 1,
     flexDirection: "column",
   },
   flashText: {
